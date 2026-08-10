@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-08-10T01:29:43.163Z",
+  "totalItems": 208,
+  "newItems": 55,
+  "sources": [
+    {
+      "sourceId": "samr-std-gb",
+      "sourceName": "全国标准信息公共服务平台 · 国家标准",
+      "tier": "A",
+      "ok": true,
+      "count": 90,
+      "durationMs": 479
+    },
+    {
+      "sourceId": "samr-std-hb",
+      "sourceName": "全国标准信息公共服务平台 · 行业标准",
+      "tier": "A",
+      "ok": true,
+      "count": 75,
+      "durationMs": 409
+    },
+    {
+      "sourceId": "openstd-gb",
+      "sourceName": "国家标准全文公开系统",
+      "tier": "A",
+      "ok": true,
+      "count": 20,
+      "durationMs": 2655
+    },
+    {
+      "sourceId": "samr-inspection",
+      "sourceName": "国家市场监督管理总局 · 抽检与监管公告",
+      "tier": "A",
+      "ok": true,
+      "count": 14,
+      "durationMs": 443
+    },
+    {
+      "sourceId": "tbt-notification",
+      "sourceName": "WTO/TBT 技术性贸易措施通报",
+      "tier": "A",
+      "ok": true,
+      "count": 0,
+      "durationMs": 1506
+    },
+    {
+      "sourceId": "ttbz-group",
+      "sourceName": "全国团体标准信息平台",
+      "tier": "B",
+      "ok": true,
+      "count": 9,
+      "durationMs": 406
+    }
+  ],
+  "failedSources": []
+}

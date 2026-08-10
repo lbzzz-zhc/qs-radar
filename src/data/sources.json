@@ -1,0 +1,105 @@
+{
+  "version": "1.0.0",
+  "note": "信源池分级注册表。前端与抓取脚本共用此文件。新增信源只需在此登记并在 scripts/sources/ 下实现同名适配器。",
+  "sources": [
+    {
+      "id": "samr-std-gb",
+      "name": "全国标准信息公共服务平台 · 国家标准",
+      "tier": "A",
+      "kind": "national-standard",
+      "homepage": "https://std.samr.gov.cn/gb",
+      "adapter": "samr-std-gb",
+      "enabled": true,
+      "authorityBase": 5,
+      "note": "官方 JSON 接口，收录 7.8 万余项国标，含发布/实施日期与现行状态。本系统 A 级主力信源。"
+    },
+    {
+      "id": "samr-std-hb",
+      "name": "全国标准信息公共服务平台 · 行业标准",
+      "tier": "A",
+      "kind": "industry-standard",
+      "homepage": "https://std.samr.gov.cn/hb",
+      "adapter": "samr-std-hb",
+      "enabled": true,
+      "authorityBase": 4.2,
+      "note": "行业标准备案信息，接口路径随平台改版存在变动，适配器内置多路径探测。"
+    },
+    {
+      "id": "openstd-gb",
+      "name": "国家标准全文公开系统",
+      "tier": "A",
+      "kind": "national-standard",
+      "homepage": "https://openstd.samr.gov.cn/bzgk/gb/",
+      "adapter": "openstd-gb",
+      "enabled": true,
+      "authorityBase": 5,
+      "note": "可在线阅读与下载国标全文，提供 hcno 详情页深链，用于补全全文入口。"
+    },
+    {
+      "id": "ttbz-group",
+      "name": "全国团体标准信息平台",
+      "tier": "B",
+      "kind": "group-standard",
+      "homepage": "https://www.ttbz.org.cn",
+      "adapter": "ttbz-group",
+      "enabled": true,
+      "authorityBase": 3.2,
+      "note": "团体标准自我声明公开，反映行业前沿动向，但权威性低于国标行标。"
+    },
+    {
+      "id": "samr-inspection",
+      "name": "国家市场监督管理总局 · 抽检与监管公告",
+      "tier": "A",
+      "kind": "inspection-notice",
+      "homepage": "https://www.samr.gov.cn",
+      "adapter": "samr-inspection",
+      "enabled": true,
+      "authorityBase": 4.6,
+      "note": "监督抽查结果通报，是消费者维权与企业合规选题的高价值来源。栏目路径会随改版调整，适配器做多路径回退。"
+    },
+    {
+      "id": "tbt-notification",
+      "name": "WTO/TBT 技术性贸易措施通报",
+      "tier": "A",
+      "kind": "tbt-notification",
+      "homepage": "https://tbtsps.customs.gov.cn",
+      "adapter": "tbt-notification",
+      "enabled": true,
+      "authorityBase": 4.4,
+      "note": "各成员方技术法规通报，出海合规选题核心来源。境外网络环境下可达性更好。"
+    },
+    {
+      "id": "cnas-org",
+      "name": "中国合格评定国家认可委员会 CNAS",
+      "tier": "B",
+      "kind": "institution",
+      "homepage": "https://www.cnas.org.cn",
+      "adapter": "generic-html",
+      "enabled": false,
+      "authorityBase": 3.4,
+      "note": "认可制度与实验室能力验证动态。默认关闭，需要时在配置中启用。"
+    },
+    {
+      "id": "sgs-cn",
+      "name": "SGS 通标标准技术服务",
+      "tier": "B",
+      "kind": "institution",
+      "homepage": "https://www.sgsgroup.com.cn",
+      "adapter": "generic-html",
+      "enabled": false,
+      "authorityBase": 3,
+      "note": "头部第三方检测机构技术资讯，常先于媒体解读新规。"
+    },
+    {
+      "id": "cti-cert",
+      "name": "华测检测 CTI",
+      "tier": "B",
+      "kind": "institution",
+      "homepage": "https://www.cti-cert.com",
+      "adapter": "generic-html",
+      "enabled": false,
+      "authorityBase": 3,
+      "note": "国内头部检测机构，法规更新解读质量较高。"
+    }
+  ]
+}
