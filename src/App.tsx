@@ -6,6 +6,7 @@ import { AI_PRESETS } from './ai/client'
 import DetailPanel from './components/DetailPanel'
 import ContentLibrary from './components/ContentLibrary'
 import WechatCollect from './components/WechatCollect'
+import WechatSearch from './components/WechatSearch'
 import { Empty, GRADE_STYLE, TierBadge } from './components/ui'
 
 /* ============================ 常量 ============================ */
@@ -62,7 +63,7 @@ export default function App() {
   } = useStore()
 
   const [modal, setModal] = useState<null | 'ai' | 'brands' | 'import'>(null)
-  const [view, setView] = useState<'intel' | 'library' | 'wechat'>('intel')
+  const [view, setView] = useState<'intel' | 'library' | 'wechat' | 'search'>('intel')
 
   // 首屏数据 + 主题同步
   useEffect(() => {
@@ -167,6 +168,12 @@ export default function App() {
           >
             标准科普采集
           </button>
+          <button
+            onClick={() => setView('search')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-all ${view === 'search' ? 'bg-brand text-white' : 'text-muted hover:text-ink'}`}
+          >
+            公众号检索
+          </button>
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -203,6 +210,8 @@ export default function App() {
       {/* ============ 主体 ============ */}
       {view === 'wechat' ? (
         <WechatCollect />
+      ) : view === 'search' ? (
+        <WechatSearch />
       ) : view === 'library' ? (
         <ContentLibrary />
       ) : (
