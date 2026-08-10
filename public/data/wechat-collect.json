@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-10T03:00:00.000Z",
+  "items": [
+    {
+      "id": "wx-seed-1",
+      "title": "GB 23350-2021 限塑令怎么看？一瓶水的包装合规清单",
+      "sourceName": "质标科普",
+      "url": "https://mp.weixin.qq.com/s/example-1",
+      "summary": "从材质、标识、厚度三个维度拆解限塑令对包装的要求，给出消费端与生产端的可操作清单。",
+      "tags": ["标准科普系列", "国标解读"],
+      "publishedAt": "2026-08-04",
+      "reviewed": false,
+      "fetchedAt": "2026-08-10T03:00:00.000Z"
+    },
+    {
+      "id": "wx-seed-2",
+      "title": "食品安全抽检不合格项目怎么读？苯甲酸超标意味着什么",
+      "sourceName": "市场监管权威发布",
+      "url": "https://mp.weixin.qq.com/s/example-2",
+      "summary": "用一张表讲清常见不合格项目（防腐剂、农残、微生物）与国标限量的关系，避免误导读者。",
+      "tags": ["抽检科普"],
+      "publishedAt": "2026-07-28",
+      "reviewed": false,
+      "fetchedAt": "2026-08-10T03:00:00.000Z"
+    },
+    {
+      "id": "wx-seed-3",
+      "title": "新国标 GB/T 40979-2025 儿童家具：家长最容易忽略的 3 个安全点",
+      "sourceName": "标准与创新",
+      "url": "https://mp.weixin.qq.com/s/example-3",
+      "summary": "聚焦结构安全、有害物质限量、警示标识，提醒家长选购儿童家具时的关键核查项。",
+      "tags": ["国标解读"],
+      "publishedAt": "2026-07-21",
+      "reviewed": false,
+      "fetchedAt": "2026-08-10T03:00:00.000Z"
+    }
+  ]
+}

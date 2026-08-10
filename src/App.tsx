@@ -4,6 +4,8 @@ import { evaluateAll, gradeOf } from './engines/credibility'
 import { useStore, type ThemeMode } from './store'
 import { AI_PRESETS } from './ai/client'
 import DetailPanel from './components/DetailPanel'
+import ContentLibrary from './components/ContentLibrary'
+import WechatCollect from './components/WechatCollect'
 import { Empty, GRADE_STYLE, TierBadge } from './components/ui'
 
 /* ============================ 常量 ============================ */
@@ -60,6 +62,7 @@ export default function App() {
   } = useStore()
 
   const [modal, setModal] = useState<null | 'ai' | 'brands' | 'import'>(null)
+  const [view, setView] = useState<'intel' | 'library' | 'wechat'>('intel')
 
   // 首屏数据 + 主题同步
   useEffect(() => {
@@ -145,6 +148,27 @@ export default function App() {
           </div>
         </div>
 
+        <nav className="ml-1 flex items-center rounded-xl border border-line bg-elevated/50 p-0.5 text-[11px]">
+          <button
+            onClick={() => setView('intel')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-all ${view === 'intel' ? 'bg-brand text-white' : 'text-muted hover:text-ink'}`}
+          >
+            情报研判
+          </button>
+          <button
+            onClick={() => setView('library')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-all ${view === 'library' ? 'bg-brand text-white' : 'text-muted hover:text-ink'}`}
+          >
+            内容资产库
+          </button>
+          <button
+            onClick={() => setView('wechat')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-all ${view === 'wechat' ? 'bg-brand text-white' : 'text-muted hover:text-ink'}`}
+          >
+            标准科普采集
+          </button>
+        </nav>
+
         <div className="ml-auto flex items-center gap-1.5">
           <ThemeToggle theme={theme} onChange={setTheme} />
 
@@ -177,6 +201,11 @@ export default function App() {
       </header>
 
       {/* ============ 主体 ============ */}
+      {view === 'wechat' ? (
+        <WechatCollect />
+      ) : view === 'library' ? (
+        <ContentLibrary />
+      ) : (
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(320px,380px)_1fr]">
         {/* 左侧列表 */}
         <aside className="flex min-h-0 flex-col border-r border-line">
@@ -296,6 +325,7 @@ export default function App() {
           )}
         </section>
       </main>
+      )}
 
       {/* ============ 弹窗 ============ */}
       {modal === 'ai' && <AISettingsModal onClose={() => setModal(null)} />}

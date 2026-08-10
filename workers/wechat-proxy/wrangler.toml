@@ -1,0 +1,8 @@
+name = "qs-radar-wechat-proxy"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# 允许调用的前端来源（你的 GitHub Pages 地址）。
+# 留空则默认 '*'（任意来源，仅持有你自己密钥、风险可控，但建议填上以收紧）。
+# [vars]
+# ALLOW_ORIGIN = "https://lbzzz-zhc.github.io"

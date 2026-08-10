@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/store.ts","./src/types.ts","./src/vite-env.d.ts","./src/ai/client.ts","./src/ai/prompts.ts","./src/components/detailpanel.tsx","./src/components/radarchart.tsx","./src/components/ui.tsx","./src/engines/angles.ts","./src/engines/credibility.ts","./src/engines/risk.ts","./src/engines/viral.ts"],"version":"5.9.3"}

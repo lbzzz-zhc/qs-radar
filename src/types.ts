@@ -197,3 +197,113 @@ export interface AIConfig {
   temperature: number
   enabled: boolean
 }
+
+// ============================================================
+// 团队内容资产库（模块：内容资产库 / Content Library）
+// 「后台数据库」= public/data/content-library.json，运行时由本系统读取，
+// 写入通过 GitHub Contents API（需团队 PAT）持久化回仓库。
+// ============================================================
+
+/** 电子稿文件引用（PDF 等，实际二进制存于仓库 data/files/<issueId>/ 下） */
+export interface FileRef {
+  id: string
+  name: string // 显示名，如 "2024年第3期全文.pdf"
+  path: string // 仓库内相对路径，如 data/files/qsbzh-2024-v12-n03/全文.pdf
+  size: number // 字节
+  mime: string // application/pdf
+  uploadedAt: string // ISO 时间
+  sha?: string // git blob sha（上传后回填，便于增量更新）
+}
+
+/** 单篇文章条目 */
+export interface ArticleItem {
+  id: string
+  title: string // 文章标题
+  column?: string // 所属栏目
+  authors?: string // 作者
+  pages?: string // 起止页码，如 "12-18"
+  abstract?: string // 摘要
+  keywords?: string[] // 关键词
+  /** 正文（Markdown）：用于导出 / 推送公众号 */
+  body?: string
+  /** 封面图 URL（推送公众号用，留空则用设置里的默认封面） */
+  coverUrl?: string
+  /** 团队是否基于该文做过选题/内容 */
+  doneByUs?: boolean
+  /** 关联的本系统选题包 id（IntelItem.id）或外部链接 */
+  relatedTopicId?: string
+  relatedNote?: string // 关联说明 / 链接备注
+  fileRefs?: FileRef[] // 该文对应电子稿（通常整期一个 PDF，可空）
+  note?: string // 内部备注
+}
+
+/** 一期杂志 */
+export interface MagazineIssue {
+  id: string // 稳定 id：<journalId>-<year>-v<vol>-n<no>
+  journalId: string // 所属期刊 id
+  year: number
+  volume?: string // 卷，如 "12"
+  issue: string // 期号，如 "03" / "S1"（增刊）
+  publishDate?: string // 出版日期 ISO yyyy-MM-dd
+  coverTheme?: string // 封面专题 / 主题
+  columns?: string[] // 栏目列表
+  articles: ArticleItem[]
+  fileRefs?: FileRef[] // 整期电子稿
+  note?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** 一本期刊（如《质量与标准化》） */
+export interface Journal {
+  id: string // 稳定 id，如 "qsbzh"
+  name: string // 《质量与标准化》
+  issuer?: string // 主办 / 出版单位
+  issn?: string
+  cn?: string // 国内统一刊号
+  coreDb?: string // 收录数据库，如 "中国核心期刊数据库"
+  description?: string
+  issues: MagazineIssue[]
+  createdAt: string
+  updatedAt: string
+}
+
+/** 内容资产库根结构（= 数据库文件） */
+export interface ContentLibrary {
+  version: string
+  updatedAt: string
+  journals: Journal[]
+}
+
+// ============================================================
+// 公众号 · 标准科普采集（独立模块）
+// 与内容资产库同一思路：public/data/wechat-collect.json 充当「后台数据库」，
+// 运行时读取，写入通过 GitHub Contents API（需团队 PAT）持久化回仓库。
+// 说明：公众号无公开内容接口、浏览器又受跨域 + 登录墙限制，故采集为「手动录入」，
+// 而非链接自动解析。所有条目默认按 C 级线索参考处理。
+// ============================================================
+
+/** 单篇公众号文章采集条目 */
+export interface WechatArticle {
+  id: string
+  title: string // 文章标题
+  sourceName: string // 公众号名称
+  url: string // 原文链接
+  summary?: string // 摘要 / 要点
+  coverUrl?: string // 封面图 URL（可选，留空用占位）
+  /** 主题标签，如 ['标准科普系列', '国标解读'] */
+  tags: string[]
+  publishedAt?: string // 发布日期 ISO yyyy-MM-dd
+  /** 是否已研判（与国家标准 / 监管公告交叉印证） */
+  reviewed?: boolean
+  /** 交叉印证 / 研判备注 */
+  note?: string
+  fetchedAt: string // 采集时间戳
+}
+
+/** 公众号标准科普采集库根结构（= 数据库文件） */
+export interface WechatCollectDB {
+  version: string
+  updatedAt: string
+  items: WechatArticle[]
+}
