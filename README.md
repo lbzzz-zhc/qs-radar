@@ -70,5 +70,32 @@ npm run preview      # 预览构建产物
 - 工具输出为**选题辅助参考**，最终发布前请核对引用数据与原文一致性，并遵守平台规范与广告法等相关法规。
 - 风险扫描为「预警而非审查」，命中项代表需人工确认，不代表内容违规。
 
+---
+
+## 微信公众号集成（内容资产库 → 草稿箱）
+
+内容资产库里的文章可**单向推送**到公众号**草稿箱**（编辑到后台复核发布），无需自建服务器。纯静态站点无法直接调微信接口（CORS + `appsecret` 安全），故用一层 Cloudflare Worker 做代理。
+
+### 两条路线（任选）
+
+**路线 A · 本地一键发布（零后端，推荐先跑通）**
+1. 安装：`npm install -g @wenyan-md/cli`
+2. 配置环境变量（公众号后台「开发 → 基本配置」取 `appid`/`appsecret`，并把运行机器公网 IP 加入 **IP 白名单**）：
+   ```bash
+   export WECHAT_APP_ID=xxx
+   export WECHAT_APP_SECRET=xxx
+   ```
+3. 在内容资产库文章点 **⬇MD** 导出 Markdown（已自动带 `title`/`cover` frontmatter）。
+4. `wenyan publish -f 文章.md -t lapis -h solarized-light` → 进草稿箱。
+
+**路线 B · 网页内一键推送（需 Cloudflare Worker）**
+1. 部署代理：`cd workers/wechat-proxy && wrangler login && wrangler secret put APPID && wrangler secret put APPSECRET && wrangler deploy`（详见该目录 `README.md`）。
+2. 网页「同步」设置里填 **微信 Worker 地址**、默认作者、默认封面。
+3. 文章点 **↗公众号** 即推草稿箱；正文里的外链图片会自动上传到微信图床。
+
+> 前置：已**认证**的公众号；`draft/add` 仅支持认证号。仅做单向推送，不回拉已发布内容。
+
+---
+
 ## License
 MIT

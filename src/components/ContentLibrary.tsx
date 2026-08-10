@@ -18,12 +18,64 @@ import {
 
 const BASE = import.meta.env.BASE_URL || '/'
 const TOKEN_KEY = 'qsr-gh-token'
+const WX_WORKER_KEY = 'qsr-wx-worker'
+const WX_AUTHOR_KEY = 'qsr-wx-author'
+const WX_COVER_KEY = 'qsr-wx-cover'
 
 // 本地暂存预览（仅当前会话有效，未同步到 GitHub 时使用）
 const objUrlMap = new Map<string, string>()
 
 function uid(p: string): string {
   return `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+// 极简 Markdown → HTML（标题/加粗/斜体/代码/链接/引用/列表/段落），够微信草稿箱用
+function mdToHtml(md: string): string {
+  if (!md) return ''
+  const lines = md.replace(/\r\n/g, '\n').split('\n')
+  let html = ''
+  let inCode = false
+  let code = ''
+  const inline = (s: string) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      .replace(/\[(.+?)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2">$1</a>')
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      if (inCode) {
+        html += `<pre>${code}</pre>`
+        code = ''
+        inCode = false
+      } else inCode = true
+      continue
+    }
+    if (inCode) {
+      code += line + '\n'
+      continue
+    }
+    if (/^#{1,6}\s+/.test(line)) {
+      const m = line.match(/^(#{1,6})\s+(.*)$/)!
+      const n = m[1].length
+      html += `<h${n}>${inline(m[2])}</h${n}>`
+      continue
+    }
+    if (/^>\s?/.test(line)) {
+      html += `<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`
+      continue
+    }
+    if (/^[-*]\s+/.test(line)) {
+      html += `<li>${inline(line.replace(/^[-*]\s+/, ''))}</li>`
+      continue
+    }
+    if (line.trim() === '') continue
+    html += `<p>${inline(line)}</p>`
+  }
+  return html
 }
 
 /* ============================ 主组件 ============================ */
@@ -43,6 +95,12 @@ export default function ContentLibrary() {
   const [status, setStatus] = useState<string | null>(null)
 
   const tokenRef = useRef<string>(localStorage.getItem(TOKEN_KEY) || '')
+  const wxRef = useRef<{ worker: string; author: string; cover: string }>({
+    worker: localStorage.getItem(WX_WORKER_KEY) || '',
+    author: localStorage.getItem(WX_AUTHOR_KEY) || '',
+    cover: localStorage.getItem(WX_COVER_KEY) || '',
+  })
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -240,9 +298,12 @@ export default function ContentLibrary() {
                                 <ArticleRow
                                   key={a.id}
                                   article={a}
+                                  busy={busyId === a.id}
                                   onToggleDone={(v) => apply(updateArticle(lib!, j.id, issue.id, a.id, { doneByUs: v }))}
                                   onPatch={(patch) => apply(updateArticle(lib!, j.id, issue.id, a.id, patch))}
                                   onDelete={() => apply(removeArticle(lib!, j.id, issue.id, a.id))}
+                                  onExport={() => downloadMd(a)}
+                                  onPush={() => pushDraft(a)}
                                 />
                               ))}
                             </div>
@@ -288,10 +349,14 @@ export default function ContentLibrary() {
       {modal === 'settings' && (
         <SettingsModal
           onClose={() => setModal(null)}
-          onSaved={(t) => {
-            tokenRef.current = t
-            localStorage.setItem(TOKEN_KEY, t)
-            setStatus(t ? '已保存 GitHub Token，改动将自动同步' : '已清除 Token（仅本地保存）')
+          onSaved={(s) => {
+            tokenRef.current = s.token
+            wxRef.current = { worker: s.worker, author: s.author, cover: s.cover }
+            localStorage.setItem(TOKEN_KEY, s.token)
+            localStorage.setItem(WX_WORKER_KEY, s.worker)
+            localStorage.setItem(WX_AUTHOR_KEY, s.author)
+            localStorage.setItem(WX_COVER_KEY, s.cover)
+            setStatus('已保存同步设置（GitHub Token + 微信 Worker）')
           }}
           onSync={async () => {
             const t = tokenRef.current
@@ -345,6 +410,48 @@ export default function ContentLibrary() {
       apply(updateIssue(lib!, journalId, issueId, { fileRefs: [...(issue.fileRefs ?? []), ref] }))
     } catch (e) {
       setStatus(`上传失败：${(e as Error).message}`)
+    }
+  }
+
+  function downloadMd(a: ArticleItem) {
+    const cover = a.coverUrl || wxRef.current.cover
+    if (!cover) return setStatus('导出需封面图：请给文章填 coverUrl，或在「同步」设置默认封面')
+    const md = `---\ntitle: ${JSON.stringify(a.title)}\ncover: ${cover}\n---\n\n${a.body || a.abstract || ''}\n`
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${a.title}.md`
+    link.click()
+    URL.revokeObjectURL(url)
+    setStatus('已导出 Markdown（本地用 wenyan publish 推送草稿箱）')
+  }
+
+  async function pushDraft(a: ArticleItem) {
+    const cfg = wxRef.current
+    if (!cfg.worker) return setStatus('请先在「同步」设置里填写微信 Worker 地址')
+    setBusyId(a.id)
+    try {
+      const cover = a.coverUrl || cfg.cover || ''
+      const html = mdToHtml(a.body || (a.abstract ? `> ${a.abstract}` : a.title))
+      const res = await fetch(`${cfg.worker.replace(/\/$/, '')}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: a.title,
+          author: a.authors || cfg.author || '',
+          digest: (a.abstract || '').slice(0, 120),
+          content: html,
+          coverUrl: cover,
+        }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setStatus(`已推送草稿到公众号：${a.title} ✓（去后台草稿箱复核发布）`)
+    } catch (e) {
+      setStatus(`推送失败：${(e as Error).message}`)
+    } finally {
+      setBusyId(null)
     }
   }
 }
@@ -501,14 +608,20 @@ function PdfChip({ refFile }: { refFile: FileRef }) {
 
 function ArticleRow({
   article,
+  busy,
   onToggleDone,
   onPatch,
   onDelete,
+  onExport,
+  onPush,
 }: {
   article: ArticleItem
+  busy?: boolean
   onToggleDone: (v: boolean) => void
   onPatch: (patch: Partial<ArticleItem>) => void
   onDelete: () => void
+  onExport: () => void
+  onPush: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState({
@@ -517,6 +630,8 @@ function ArticleRow({
     authors: article.authors ?? '',
     pages: article.pages ?? '',
     relatedNote: article.relatedNote ?? '',
+    body: article.body ?? '',
+    coverUrl: article.coverUrl ?? '',
   })
 
   if (!editing)
@@ -536,6 +651,12 @@ function ArticleRow({
             </div>
             {article.relatedNote && <div className="mt-1 text-[10px] text-brand">关联：{article.relatedNote}</div>}
           </div>
+          <button className="btn-ghost !px-2 !py-0.5 text-[11px]" onClick={onExport} title="导出 Markdown">
+            ⬇MD
+          </button>
+          <button className="btn-ghost !px-2 !py-0.5 text-[11px]" onClick={onPush} disabled={busy} title="推送草稿到公众号">
+            {busy ? '推送中…' : '↗公众号'}
+          </button>
           <button className="btn-ghost !px-2 !py-0.5 text-[11px]" onClick={() => setEditing(true)}>
             编辑
           </button>
@@ -565,6 +686,12 @@ function ArticleRow({
       <Field label="关联选题 / 备注">
         <input className="field" value={draft.relatedNote} onChange={(e) => setDraft({ ...draft, relatedNote: e.target.value })} placeholder="关联本系统选题 id 或链接" />
       </Field>
+      <Field label="正文 (Markdown)">
+        <textarea className="field h-28 resize-none" value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} placeholder="用于导出 / 推送公众号" />
+      </Field>
+      <Field label="封面图 URL">
+        <input className="field" value={draft.coverUrl} onChange={(e) => setDraft({ ...draft, coverUrl: e.target.value })} placeholder="推送公众号用的封面，留空用默认" />
+      </Field>
       <div className="flex justify-end gap-2">
         <button className="btn-ghost !py-1.5 text-xs" onClick={() => setEditing(false)}>
           取消
@@ -572,7 +699,15 @@ function ArticleRow({
         <button
           className="btn-primary !py-1.5 text-xs"
           onClick={() => {
-            onPatch({ title: draft.title, column: draft.column || undefined, authors: draft.authors || undefined, pages: draft.pages || undefined, relatedNote: draft.relatedNote || undefined })
+            onPatch({
+              title: draft.title,
+              column: draft.column || undefined,
+              authors: draft.authors || undefined,
+              pages: draft.pages || undefined,
+              relatedNote: draft.relatedNote || undefined,
+              body: draft.body || undefined,
+              coverUrl: draft.coverUrl || undefined,
+            })
             setEditing(false)
           }}
         >
@@ -712,7 +847,7 @@ function AddIssueModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
 }
 
 function AddArticleModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (p: Omit<ArticleItem, 'id'>) => void }) {
-  const [d, setD] = useState({ title: '', column: '', authors: '', pages: '', abstract: '', keywords: '', relatedNote: '' })
+  const [d, setD] = useState({ title: '', column: '', authors: '', pages: '', abstract: '', keywords: '', relatedNote: '', body: '', coverUrl: '' })
   return (
     <Modal title="添加文章" desc="录入一篇文章；可稍后在列表中标记「我们做过」并关联选题。" onClose={onClose}>
       <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
@@ -739,6 +874,12 @@ function AddArticleModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
         <Field label="关联选题 / 备注">
           <input className="field" value={d.relatedNote} onChange={(e) => setD({ ...d, relatedNote: e.target.value })} placeholder="关联本系统选题 id 或链接" />
         </Field>
+        <Field label="正文 (Markdown)">
+          <textarea className="field h-24 resize-none" value={d.body} onChange={(e) => setD({ ...d, body: e.target.value })} placeholder="用于导出 / 推送公众号（可选）" />
+        </Field>
+        <Field label="封面图 URL">
+          <input className="field" value={d.coverUrl} onChange={(e) => setD({ ...d, coverUrl: e.target.value })} placeholder="推送公众号用的封面（可选，留空用默认）" />
+        </Field>
         <div className="flex justify-end gap-2 pt-1">
           <button className="btn-ghost !py-1.5 text-xs" onClick={onClose}>
             取消
@@ -755,6 +896,8 @@ function AddArticleModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
                 abstract: d.abstract || undefined,
                 keywords: d.keywords ? d.keywords.split(/[,，]/).map((s) => s.trim()).filter(Boolean) : undefined,
                 relatedNote: d.relatedNote || undefined,
+                body: d.body || undefined,
+                coverUrl: d.coverUrl || undefined,
               })
             }
           >
@@ -773,33 +916,45 @@ function SettingsModal({
   status,
 }: {
   onClose: () => void
-  onSaved: (token: string) => void
+  onSaved: (s: { token: string; worker: string; author: string; cover: string }) => void
   onSync: () => void
   status: string | null
 }) {
   const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY) || '')
+  const [worker, setWorker] = useState(localStorage.getItem(WX_WORKER_KEY) || '')
+  const [author, setAuthor] = useState(localStorage.getItem(WX_AUTHOR_KEY) || '')
+  const [cover, setCover] = useState(localStorage.getItem(WX_COVER_KEY) || '')
   return (
     <Modal
-      title="GitHub 同步设置"
-      desc="团队 PAT（需 repo 权限）仅存于本机浏览器，用于把内容资产写回仓库充当后台数据库。不填则数据仅保留在本机本次会话。"
+      title="同步设置"
+      desc="GitHub Token 仅存本机，用于把内容资产写回仓库充当数据库；微信 Worker 地址用于把文章一键推送到公众号草稿箱。"
       onClose={onClose}
     >
       <div className="space-y-3">
-        <Field label="GitHub Token (PAT)">
-          <input
-            className="field"
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="ghp_..."
-          />
-        </Field>
+        <div className="rounded-xl border border-line bg-elevated/40 p-3">
+          <div className="mb-2 text-[11px] font-medium text-muted">GitHub 同步（内容资产库数据库）</div>
+          <Field label="GitHub Token (PAT)">
+            <input className="field" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="ghp_..." />
+          </Field>
+        </div>
+        <div className="rounded-xl border border-line bg-elevated/40 p-3">
+          <div className="mb-2 text-[11px] font-medium text-muted">微信推送（一键到草稿箱）</div>
+          <Field label="微信 Worker 地址">
+            <input className="field" value={worker} onChange={(e) => setWorker(e.target.value)} placeholder="https://xxx.workers.dev" />
+          </Field>
+          <Field label="默认作者">
+            <input className="field" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="留空则用文章作者" />
+          </Field>
+          <Field label="默认封面图 URL">
+            <input className="field" value={cover} onChange={(e) => setCover(e.target.value)} placeholder="文章未填封面时用它" />
+          </Field>
+        </div>
         <div className="flex justify-end gap-2">
           <button className="btn-ghost !py-1.5 text-xs" onClick={onClose}>
             取消
           </button>
-          <button className="btn-ghost !py-1.5 text-xs" onClick={() => onSaved(token)}>
-            保存 Token
+          <button className="btn-ghost !py-1.5 text-xs" onClick={() => onSaved({ token, worker, author, cover })}>
+            保存设置
           </button>
           <button className="btn-primary !py-1.5 text-xs" onClick={onSync}>
             立即同步到 GitHub
